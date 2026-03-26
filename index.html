@@ -7,12 +7,11 @@
     body { margin:0; font-family: Arial; background:#0f172a; color:#e2e8f0; }
     .container { display:flex; height:100vh; }
     .sidebar { width:260px; background:#020617; padding:20px; display:flex; flex-direction:column; justify-content:space-between; }
-    .sidebar button { background:#1f2937; border:none; color:white; padding:10px; border-radius:6px; cursor:pointer; text-align:left; }
+    .sidebar button { background:#1f2937; border:none; color:white; padding:10px; border-radius:6px; cursor:pointer; text-align:left; margin-bottom:5px; }
     .sidebar button.active { background:#3b82f6; }
     .main { flex:1; padding:25px; overflow:auto; }
     .card { background:#111827; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-    input, select, textarea { padding:8px; border-radius:6px; border:none; background:#1f2937; color:white; width:100%; }
-    textarea { resize:vertical; }
+    input, select { padding:8px; border-radius:6px; border:none; background:#1f2937; color:white; width:100%; margin-bottom:10px; }
     button.primary { background:#3b82f6; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; }
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th { text-align:left; font-size:12px; color:#94a3b8; padding:10px; }
@@ -26,12 +25,13 @@
     .declined { background:#7f1d1d; }
     .login { display:flex; height:100vh; justify-content:center; align-items:center; }
     .login-box { background:#111827; padding:30px; border-radius:12px; width:300px; text-align:center; }
-    .flex { display:flex; gap:10px; }
+    .flex { display:flex; gap:10px; align-items:center; }
     .small { font-size:12px; color:#94a3b8; }
   </style>
 </head>
 <body>
 <div id="app"></div>
+
 <script>
 let user = null;
 let selected = null;
@@ -48,9 +48,7 @@ function escapeHTML(str){
   return String(str||"")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/\"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+    .replace(/>/g,"&gt;");
 }
 
 let applicants = JSON.parse(localStorage.getItem("applicants")) || [
@@ -66,7 +64,7 @@ function render(){
       <div class="sidebar">
         <div>
           <h2>RecruitFlow</h2>
-          <p>${escapeHTML(user.name)}</p>
+          <p>${user.name}</p>
           <button class="${activeTab==='pending'?'active':''}" onclick="setTab('pending')">Pending</button>
           <button class="${activeTab==='approved'?'active':''}" onclick="setTab('approved')">Approved</button>
           <button class="${activeTab==='declined'?'active':''}" onclick="setTab('declined')">Declined</button>
@@ -83,7 +81,7 @@ function render(){
 function setTab(tab){ activeTab = tab; render(); }
 
 function renderMain(){
-  return renderDashboard() + renderFilteredTable();
+  return renderDashboard() + renderTableSection();
 }
 
 function renderDashboard(){
@@ -91,14 +89,15 @@ function renderDashboard(){
   const approved = applicants.filter(a=>a.status==="Approved").length;
   const declined = applicants.filter(a=>a.status==="Declined").length;
   const pending = applicants.filter(a=>a.status!=="Approved" && a.status!=="Declined").length;
+
   return `
     <div class="card">
       <h2>Dashboard</h2>
       <div class="flex">
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Total</div><div>${total}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Approved</div><div>${approved}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Declined</div><div>${declined}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Pending</div><div>${pending}</div></div>
+        <div class="card" style="flex:1;text-align:center;"><div class="small">Total</div>${total}</div>
+        <div class="card" style="flex:1;text-align:center;"><div class="small">Approved</div>${approved}</div>
+        <div class="card" style="flex:1;text-align:center;"><div class="small">Declined</div>${declined}</div>
+        <div class="card" style="flex:1;text-align:center;"><div class="small">Pending</div>${pending}</div>
       </div>
     </div>
   `;
@@ -110,49 +109,48 @@ function getFiltered(){
   return applicants.filter(a=>a.status!=="Approved" && a.status!=="Declined");
 }
 
-function renderFilteredTable(){
+function renderTableSection(){
   const data = getFiltered();
+
+  if(data.length===0){
+    return `<div class="card"><p class="small">No applicants</p></div>`;
+  }
+
+  let rows = data.map(a=>{
+    let statusClass = a.status.toLowerCase();
+    return `<tr onclick="openProfile(${a.id})">
+      <td>${escapeHTML(a.name)}</td>
+      <td>${escapeHTML(a.role)}</td>
+      <td><span class="status ${statusClass}">${a.status}</span></td>
+    </tr>`;
+  }).join("");
+
   return `
     <div class="card">
-      <div class="flex" style="justify-content:space-between; align-items:center;">
-        <h2>${activeTab.charAt(0).toUpperCase()+activeTab.slice(1)} Applicants</h2>
-        <button class="primary" onclick="addApplicant()">+ Add Applicant</button>
+      <div class="flex" style="justify-content:space-between;">
+        <h2>${activeTab} Applicants</h2>
+        <button class="primary" onclick="addApplicant()">+ Add</button>
       </div>
-      ${renderTable(data)}
+      <table>
+        <tr><th>Name</th><th>Role</th><th>Status</th></tr>
+        ${rows}
+      </table>
     </div>
   `;
 }
 
-function renderTable(data){
-  if(!data || data.length===0){
-    return `<p class="small">No applicants</p>`;
-  }
-  let rows = data.map(a => {
-    let statusClass = (a.status||"").toLowerCase();
-    return `<tr onclick="openProfile(${a.id})">
-      <td>${escapeHTML(a.name)}</td>
-      <td>${escapeHTML(a.role)}</td>
-      <td><span class="status ${statusClass}">${escapeHTML(a.status)}</span></td>
-    </tr>`;
-  }).join("");
-
-  return `<table>
-    <tr><th>Name</th><th>Role</th><th>Status</th></tr>
-    ${rows}
-  </table>`;
-}
-
-function openProfile(id){ selected = applicants.find(a=>a.id===id) || null; render(); }
+function openProfile(id){ selected = applicants.find(a=>a.id===id); render(); }
 function back(){ selected=null; render(); }
 
 function renderProfile(){
   const a = selected;
-  if(!a) return "";
+
   return `
     <button onclick="back()">← Back</button>
+
     <div class="card">
-      <input value="${escapeHTML(a.name)}" oninput="updateField('name',this.value)">
-      <input value="${escapeHTML(a.role)}" oninput="updateField('role',this.value)">
+      <input value="${a.name}" onchange="updateField('name',this.value)">
+      <input value="${a.role}" onchange="updateField('role',this.value)">
       <select onchange="updateField('status',this.value)">
         <option ${a.status==='Received'?'selected':''}>Received</option>
         <option ${a.status==='Reviewed'?'selected':''}>Reviewed</option>
@@ -161,34 +159,95 @@ function renderProfile(){
         <option ${a.status==='Declined'?'selected':''}>Declined</option>
       </select>
     </div>
+
+    <div class="card">
+      <h3>Notes</h3>
+      <div class="flex">
+        <input id="note">
+        <button class="primary" onclick="addNote()">Add</button>
+      </div>
+      ${a.notes.map(n=>`<div class="small">${n}</div>`).join("")}
+    </div>
+
+    <div class="card">
+      <h3>CV Links</h3>
+      <div class="flex">
+        <input id="cv">
+        <button class="primary" onclick="addCV()">Add</button>
+      </div>
+      ${a.cv.map(l=>`<div><a href="${l}" target="_blank">Open CV</a></div>`).join("")}
+    </div>
+
+    <div class="card">
+      <h3>Approvals</h3>
+      ${[0,1,2].map(i=>{
+        let names=["Taufeeq","Jessie","Seth"];
+        let val=a.approvals[i];
+        return `<div class="flex">
+          <span>${names[i]}</span>
+          <button onclick="approve(${i},true)">✔</button>
+          <button onclick="approve(${i},false)">✖</button>
+          <span class="small">${val===true?"Approved":val===false?"Declined":"Pending"}</span>
+        </div>`;
+      }).join("")}
+    </div>
   `;
 }
 
-function updateField(field,value){ if(!selected) return; selected[field]=value; save(); render(); }
+function updateField(field,value){
+  selected[field]=value;
+  save();
+}
+
+function addNote(){
+  let val=document.getElementById("note").value;
+  if(!val) return;
+  selected.notes.unshift(user.name+": "+val);
+  save(); render();
+}
+
+function addCV(){
+  let val=document.getElementById("cv").value;
+  if(!val) return;
+  selected.cv.unshift(val);
+  save(); render();
+}
+
+function approve(i,val){
+  if(user.step!==i && user.step!=="director") return;
+  selected.approvals[i]=val;
+  save(); render();
+}
 
 function addApplicant(){
-  const id = Date.now();
-  applicants.unshift({ id, name:"New Applicant", role:"Role", status:"Received", approvals:[null,null,null], notes:[], cv:[] });
+  applicants.unshift({
+    id:Date.now(),
+    name:"New Applicant",
+    role:"Role",
+    status:"Received",
+    approvals:[null,null,null],
+    notes:[],
+    cv:[]
+  });
   save(); render();
 }
 
 function login(){
-  const u = document.getElementById("u").value;
-  const p = document.getElementById("p").value;
-  const acc = Object.values(accounts).find(a=>a.username===u && a.password===p);
-  if(acc){ user = acc; render(); }
-  else alert("Invalid login");
+  let u=document.getElementById("u").value;
+  let p=document.getElementById("p").value;
+  let acc=Object.values(accounts).find(a=>a.username===u && a.password===p);
+  if(acc){ user=acc; render(); } else alert("Invalid");
 }
 
 function logout(){ user=null; selected=null; render(); }
 
 function renderLogin(){
-  document.getElementById("app").innerHTML = `
+  document.getElementById("app").innerHTML=`
     <div class="login">
       <div class="login-box">
         <h2>Login</h2>
-        <input id="u" placeholder="Username"><br>
-        <input id="p" placeholder="Password" type="password"><br>
+        <input id="u"><br>
+        <input id="p" type="password"><br>
         <button class="primary" onclick="login()">Login</button>
       </div>
     </div>
