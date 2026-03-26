@@ -76,12 +76,19 @@ function login(){
 function logout(){ user=null; render(); }
 
 function renderTable(){
-  return `
-    <table>
-      <tr><th>Name</th><th>Role</th><th>Status</th></tr>
-      ${applicants.map(a=>`
-        <tr>
-          <td>${a.name}</td>
+  let rows = applicants.map(function(a){
+    return '<tr>' +
+      '<td>' + a.name + '</td>' +
+      '<td>' + a.role + '</td>' +
+      '<td>' + a.status + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return '<table>' +
+    '<tr><th>Name</th><th>Role</th><th>Status</th></tr>' +
+    rows +
+  '</table>';
+}</td>
           <td>${a.role}</td>
           <td>${a.status}</td>
         </tr>
