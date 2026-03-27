@@ -23,9 +23,8 @@ firebase.initializeApp(firebaseConfig);
     .sidebar button { background:#1f2937; border:none; color:white; padding:10px; border-radius:6px; cursor:pointer; text-align:left; }
     .sidebar button.active { background:#3b82f6; }
     .main { flex:1; padding:25px; overflow:auto; }
-    .card { background:#111827; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-    input, select, textarea { padding:8px; border-radius:6px; border:none; background:#1f2937; color:white; width:100%; }
-    textarea { resize:vertical; }
+    .card { background:#111827; padding:15px; border-radius:12px; margin-bottom:15px; }
+    input, select { padding:8px; border-radius:6px; border:none; background:#1f2937; color:white; width:100%; margin-bottom:10px; }
     button.primary { background:#3b82f6; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; }
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th { text-align:left; font-size:12px; color:#94a3b8; padding:10px; }
@@ -58,36 +57,35 @@ const accounts = {
 };
 
 function escapeHTML(str){
-  return String(str||"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/\"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+  return String(str||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-let applicants = JSON.parse(localStorage.getItem("applicants")) || [
-  { id:1, name:"Demo Applicant", role:"Agent", status:"Received", approvals:[null,null,null], notes:[], cv:[] }
-];
+let applicants = [];
 
-function save(){ localStorage.setItem("applicants", JSON.stringify(applicants)); }
+function save(){
+  if(window.firebase){
+    firebase.database().ref("applicants").set(applicants);
+  }
+}
 
 function render(){
   if(!user) return renderLogin();
+
   document.getElementById("app").innerHTML = `
     <div class="container">
       <div class="sidebar">
         <div>
           <h2>RecruitFlow</h2>
-          <p>${escapeHTML(user.name)}</p>
+          <p>${user.name}</p>
           <button class="${activeTab==='pending'?'active':''}" onclick="setTab('pending')">Pending</button>
           <button class="${activeTab==='approved'?'active':''}" onclick="setTab('approved')">Approved</button>
           <button class="${activeTab==='declined'?'active':''}" onclick="setTab('declined')">Declined</button>
         </div>
         <button onclick="logout()">Logout</button>
       </div>
+
       <div class="main">
-        ${selected ? renderProfile() : renderMain()}
+        ${selected ? renderProfile() : renderDashboard() + renderTableSection()}
       </div>
     </div>
   `;
@@ -95,26 +93,8 @@ function render(){
 
 function setTab(tab){ activeTab = tab; render(); }
 
-function renderMain(){
-  return renderDashboard() + renderFilteredTable();
-}
-
 function renderDashboard(){
-  const total = applicants.length;
-  const approved = applicants.filter(a=>a.status==="Approved").length;
-  const declined = applicants.filter(a=>a.status==="Declined").length;
-  const pending = applicants.filter(a=>a.status!=="Approved" && a.status!=="Declined").length;
-  return `
-    <div class="card">
-      <h2>Dashboard</h2>
-      <div class="flex">
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Total</div><div>${total}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Approved</div><div>${approved}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Declined</div><div>${declined}</div></div>
-        <div class="card" style="flex:1; text-align:center;"><div class="small">Pending</div><div>${pending}</div></div>
-      </div>
-    </div>
-  `;
+  return `<div class="card"><h2>Dashboard</h2></div>`;
 }
 
 function getFiltered(){
@@ -123,29 +103,25 @@ function getFiltered(){
   return applicants.filter(a=>a.status!=="Approved" && a.status!=="Declined");
 }
 
-function renderFilteredTable(){
+function renderTableSection(){
   const data = getFiltered();
 
-  let rows = "";
-  if(data.length>0){
-    rows = data.map(a=>{
-      let statusClass = a.status.toLowerCase();
-      return `<tr onclick="openProfile(${a.id})">
-        <td>${escapeHTML(a.name)}</td>
-        <td>${escapeHTML(a.role)}</td>
-        <td><span class="status ${statusClass}">${a.status}</span></td>
-      </tr>`;
-    }).join("");
-  }
+  let rows = data.map(a=>`
+    <tr onclick="openProfile(${a.id})">
+      <td>${a.name}</td>
+      <td>${a.role}</td>
+      <td>${a.status}</td>
+    </tr>
+  `).join("");
 
   return `
     <div class="card">
-      <div class="flex" style="justify-content:space-between; align-items:center;">
-        <h2>${activeTab.charAt(0).toUpperCase()+activeTab.slice(1)} Applicants</h2>
+      <div class="flex" style="justify-content:space-between;">
+        <h2>Applicants</h2>
         <button class="primary" onclick="addApplicant()">+ Add Applicant</button>
       </div>
 
-      ${data.length===0 ? '<p class="small">No applicants</p>' : `
+      ${data.length===0 ? '<p>No applicants</p>' : `
         <table>
           <tr><th>Name</th><th>Role</th><th>Status</th></tr>
           ${rows}
@@ -153,131 +129,59 @@ function renderFilteredTable(){
       `}
     </div>
   `;
-} Applicants</h2>
-        <button class="primary" onclick="addApplicant()">+ Add Applicant</button>
-      </div>
-      ${renderTable(data)}
-    </div>
-  `;
 }
 
-function renderTable(data){
-  if(!data || data.length===0){
-    return `<p class="small">No applicants</p>`;
-  }
-  let rows = data.map(a => {
-    let statusClass = (a.status||"").toLowerCase();
-    return `<tr onclick="openProfile(${a.id})">
-      <td>${escapeHTML(a.name)}</td>
-      <td>${escapeHTML(a.role)}</td>
-      <td><span class="status ${statusClass}">${escapeHTML(a.status)}</span></td>
-    </tr>`;
-  }).join("");
-
-  return `<table>
-    <tr><th>Name</th><th>Role</th><th>Status</th></tr>
-    ${rows}
-  </table>`;
-}
-
-function openProfile(id){ selected = applicants.find(a=>a.id===id) || null; render(); }
+function openProfile(id){ selected = applicants.find(a=>a.id===id); render(); }
 function back(){ selected=null; render(); }
 
 function renderProfile(){
   const a = selected;
-  if(!a) return "";
   return `
-    <button onclick="back()">← Back</button>
-
+    <button onclick="back()">Back</button>
     <div class="card">
-      <input value="${escapeHTML(a.name)}" onchange="updateField('name',this.value)">
-      <input value="${escapeHTML(a.role)}" onchange="updateField('role',this.value)">
-      <select onchange="updateField('status',this.value)">
-        <option ${a.status==='Received'?'selected':''}>Received</option>
-        <option ${a.status==='Reviewed'?'selected':''}>Reviewed</option>
-        <option ${a.status==='Interviewed'?'selected':''}>Interviewed</option>
-        <option ${a.status==='Approved'?'selected':''}>Approved</option>
-        <option ${a.status==='Declined'?'selected':''}>Declined</option>
-      </select>
-    </div>
-
-    <div class="card">
-      <h3>Notes</h3>
-      <div class="flex">
-        <input id="note">
-        <button class="primary" onclick="addNote()">Add</button>
-      </div>
-      ${a.notes.map(n=>`<div class="small">${escapeHTML(n)}</div>`).join("")}
-    </div>
-
-    <div class="card">
-      <h3>CV Links</h3>
-      <div class="flex">
-        <input id="cv">
-        <button class="primary" onclick="addCV()">Add</button>
-      </div>
-      ${a.cv.map(l=>`<div><a href="${escapeHTML(l)}" target="_blank">Open CV</a></div>`).join("")}
-    </div>
-
-    <div class="card">
-      <h3>Approvals</h3>
-      ${[0,1,2].map(i=>{
-        let names=["Taufeeq","Jessie","Seth"];
-        let val = a.approvals[i];
-        return `<div class="flex">
-          <span>${names[i]}</span>
-          <button onclick="approve(${i},true)">✔</button>
-          <button onclick="approve(${i},false)">✖</button>
-          <span class="small">${val===true?"Approved":val===false?"Declined":"Pending"}</span>
-        </div>`;
-      }).join("")}
-    </div>
-  `;
-}" onchange="updateField('name',this.value)">
-      <input value="${escapeHTML(a.role)}" onchange="updateField('role',this.value)">
-      <select onchange="updateField('status',this.value)">
-        <option ${a.status==='Received'?'selected':''}>Received</option>
-        <option ${a.status==='Reviewed'?'selected':''}>Reviewed</option>
-        <option ${a.status==='Interviewed'?'selected':''}>Interviewed</option>
-        <option ${a.status==='Approved'?'selected':''}>Approved</option>
-        <option ${a.status==='Declined'?'selected':''}>Declined</option>
-      </select>
+      <input value="${a.name}" onchange="updateField('name',this.value)">
+      <input value="${a.role}" onchange="updateField('role',this.value)">
     </div>
   `;
 }
 
-function updateField(field,value){ if(!selected) return; selected[field]=value; save(); }
+function updateField(field,value){ selected[field]=value; save(); }
 
 function addApplicant(){
-  const id = Date.now();
-  applicants.unshift({ id, name:"New Applicant", role:"Role", status:"Received", approvals:[null,null,null], notes:[], cv:[] });
+  applicants.unshift({ id:Date.now(), name:"New Applicant", role:"Role", status:"Received" });
   save(); render();
 }
 
 function login(){
-  const u = document.getElementById("u").value;
-  const p = document.getElementById("p").value;
-  const acc = Object.values(accounts).find(a=>a.username===u && a.password===p);
-  if(acc){ user = acc; render(); }
-  else alert("Invalid login");
+  let u=document.getElementById("u").value;
+  let p=document.getElementById("p").value;
+  let acc=Object.values(accounts).find(a=>a.username===u && a.password===p);
+  if(acc){ user=acc; render(); }
 }
 
-function logout(){ user=null; selected=null; render(); }
+function logout(){ user=null; render(); }
 
 function renderLogin(){
   document.getElementById("app").innerHTML = `
     <div class="login">
       <div class="login-box">
         <h2>Login</h2>
-        <input id="u" placeholder="Username"><br>
-        <input id="p" placeholder="Password" type="password"><br>
-        <button class="primary" onclick="login()">Login</button>
+        <input id="u"><br>
+        <input id="p" type="password"><br>
+        <button onclick="login()">Login</button>
       </div>
     </div>
   `;
 }
 
-render();
+if(window.firebase){
+  firebase.database().ref("applicants").on("value", snap=>{
+    applicants = snap.val() || [];
+    render();
+  });
+} else {
+  render();
+}
 </script>
 </body>
 </html>
