@@ -3,28 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>RecruitFlow</title>
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBNjMVJYlERNRF9HMjc2rU3NNeUlDl-U0s",
-    authDomain: "projectct-d7227.firebaseapp.com",
-    projectId: "projectct-d7227",
-    storageBucket: "projectct-d7227.firebasestorage.app",
-    messagingSenderId: "86129005870",
-    appId: "1:86129005870:web:3c0b27af1a6937a8d556bf",
-    measurementId: "G-K2VFZN7GWF"
-  };
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBNjMVJYlERNRF9HMjc2rU3NNeUlDl-U0s",
+  authDomain: "projectct-d7227.firebaseapp.com",
+  databaseURL: "https://projectct-d7227-default-rtdb.firebaseio.com/",
+  projectId: "projectct-d7227"
+};
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+firebase.initializeApp(firebaseConfig);
 </script>
   <style>
     body { margin:0; font-family: Arial; background:#0f172a; color:#e2e8f0; }
