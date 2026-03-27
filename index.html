@@ -54,7 +54,9 @@ const accounts = {
 let applicants = [];
 
 function save(){
-  firebase.database().ref("applicants").set(applicants);
+  const obj = {};
+  applicants.forEach(a => { obj[a.id] = a; });
+  firebase.database().ref("applicants").set(obj);
 }
 
 function render(){
@@ -164,7 +166,8 @@ function renderLogin(){
 }
 
 firebase.database().ref("applicants").on("value", snap=>{
-  applicants = snap.val() || [];
+  const data = snap.val() || {};
+  applicants = Object.values(data);
   render();
 });
 
